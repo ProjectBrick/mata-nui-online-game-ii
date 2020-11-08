@@ -52,10 +52,12 @@ if(numFramesLoaded > 4)
 			var flashPlatform = flashVersion.substr(1,i - 1);
 			var majorVersion = flashVersion.substr(i + 1);
 			i = 0;
-			while (i < majorVersion.length) {
-				currentCharacter = majorVersion.substr(i, 1);
-				if(currentCharacter == ",") {
-					majorVersion = majorVersion.substr(0, i);
+			while(i < majorVersion.length)
+			{
+				currentCharacter = majorVersion.substr(i,1);
+				if(currentCharacter == ",")
+				{
+					majorVersion = majorVersion.substr(0,i);
 					break;
 				}
 				i++;
@@ -209,7 +211,8 @@ function getState()
 	getStateObject = new LoadVars();
 	var currentDate = new Date();
 	var noCache = currentDate.getTime();
-	if(typeof _root.getstate_url == "string" && _root.getstate_url.length) {
+	if(typeof _root.getstate_url == "string" && _root.getstate_url.length)
+	{
 		var loadURL = getstate_url + "?noCache=" + noCache;
 	}
 	else if(stateURL.length < 1)
@@ -220,7 +223,8 @@ function getState()
 	{
 		var loadURL = stateURL + "getstate.asp" + "?noCache=" + noCache;
 	}
-	if(_global.__hahli) {
+	if(_global.__hahli)
+	{
 		_global.__hahli.getstate(getStateObject);
 	}
 	else
@@ -234,7 +238,8 @@ function setState()
 	{
 		output("State -- sending state to the server");
 		initializeStateObject();
-		if(typeof _root.setstate_url == "string" && _root.setstate_url.length) {
+		if(typeof _root.setstate_url == "string" && _root.setstate_url.length)
+		{
 			sendURL = _root.setstate_url;
 		}
 		else
@@ -248,7 +253,8 @@ function setState()
 		hashSignature = calculateHash(updateState);
 		setStateObject.signature = hashSignature;
 		output("State -- signature is " + hashSignature);
-		if(_global.__hahli) {
+		if(_global.__hahli)
+		{
 			_global.__hahli.setstate(setStateObject);
 		}
 		else
@@ -276,8 +282,6 @@ function initGame()
 
 # Using system fonts instead of the embedded fonts
 
-1.  Open `Player.swf` in FFDec.
-2.  Right-click `player.swf`, select `Export SWF as XML`.
-3.  Find and replace all `useOutlines="false"` instances with `useOutlines="true"` in XML.
-4.  Right-click `Player.swf`, select `Import SWF XML`.
-5.  Click `Save`.
+There is a text issue where many dynamic text fields are not set to use the embedded fonts.
+
+This is fixed is complex and done automatically in the build script.
