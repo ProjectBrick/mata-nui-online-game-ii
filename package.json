@@ -2,7 +2,7 @@
 	"private": true,
 	"version": "0.0.0",
 	"author": "Project Brick",
-	"copyright": "Copyright 2003 The LEGO Group and Templar Studios. Unofficial release by Project Brick.",
+	"copyright": "Copyright 2003 The LEGO Group and Templar Studios LLC. Unofficial release by Project Brick.",
 	"scripts": {
 		"shockpkg": "shockpkg",
 		"gulp": "gulp",
