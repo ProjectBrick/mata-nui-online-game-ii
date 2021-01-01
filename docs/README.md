@@ -1,5 +1,7 @@
 # Mata Nui Online Game II: The Final Chronicle -- README
 
+Return to Mata Nui in an all-new online adventure! As Hahli, Kolhii Champion of Ga-Koro, explore the incredible world of BIONICLE. Play Kolhii, solve puzzles, collect Widgets...and discover your destiny.
+
 
 ## Debug Keys
 
