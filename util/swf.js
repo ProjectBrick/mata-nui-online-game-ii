@@ -546,7 +546,7 @@ class Swf extends Data {
 
 	encoder(data) {
 		let i = 0;
-		const sig = data.write('FWS', i, 'ascii');
+		data.write('FWS', i, 'ascii');
 		i += 3;
 
 		data.writeUInt8(this.version, i++);
