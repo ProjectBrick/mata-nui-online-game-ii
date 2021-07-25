@@ -1,5 +1,74 @@
 'use strict';
 
+function subview(data, start, size = null) {
+	size = size === null ? data.length - start : size;
+	const r = data.subarray(start, start + size);
+	if (r.length < size) {
+		throw new Error(`Buffer is too small: ${r.length} < ${size}`);
+	}
+	return r;
+}
+exports.subview = subview;
+
+function bitCountU(i) {
+	let n = 0;
+	for (; i; i >>= 1) {
+		n++;
+	}
+	return n;
+}
+exports.bitCountU = bitCountU;
+
+function bitCountS(i) {
+	return bitCountU(i < 0 ? i ^ -1 : i) + 1;
+}
+exports.bitCountS = bitCountS;
+
+function bitReader(data, start) {
+	return (c, b, s = false) => {
+		let r = 0;
+		for (let i = 0; i < c; i++) {
+			const bI = b + i;
+			const bitI = bI % 8;
+			const byteI = (bI - bitI) / 8;
+			const v = (data.readUInt8(start + byteI) >> (7 - bitI)) & 1;
+			r = (r << 1) | v;
+		}
+		r >>= 0;
+		if (s && c && (r >> (c - 1)) & 1) {
+			r |= -1 << c;
+		}
+		return r;
+	};
+}
+exports.bitReader = bitReader;
+
+function bitWriter(data, start) {
+	return (v, c, b) => {
+		for (let i = 0; i < c; i++) {
+			const bI = b + i;
+			const bitI = bI % 8;
+			const byteI = (bI - bitI) / 8;
+			let byteV = data.readUInt8(start + byteI);
+			const flag = 1 << (7 - bitI);
+			if ((v >> ((c - 1) - i)) & 1) {
+				byteV |= flag;
+			}
+			else {
+				byteV &= ~flag;
+			}
+			data.writeUInt8(byteV, start + byteI);
+		}
+	};
+}
+exports.bitWriter = bitWriter;
+
+function bitCountToBytes(count) {
+	const over = count % 8;
+	return ((count - over) / 8) + (over ? 1 : 0);
+}
+exports.bitCountToBytes = bitCountToBytes;
+
 function bufferReadCstr(buffer, offset) {
 	const chars = [];
 	for (;;) {
@@ -41,17 +110,7 @@ class Data extends Object {
 
 	encode(data = null, offset = 0) {
 		const {size} = this;
-		if (data) {
-			data = data.subarray(offset, offset + size);
-			if (data.length < size) {
-				throw new Error(
-					`Buffer is too small: ${data.length} < ${size}`
-				);
-			}
-		}
-		else {
-			data = Buffer.alloc(size);
-		}
+		data = data ? subview(data, offset, size) : Buffer.alloc(size);
 		this.encoder(data);
 		return data;
 	}
@@ -62,8 +121,8 @@ class Fixed8 extends Data {
 	constructor() {
 		super();
 
-		this.a = 0;
-		this.b = 0;
+		this.numerator = 0;
+		this.denominator = 0;
 	}
 
 	get size() {
@@ -71,16 +130,14 @@ class Fixed8 extends Data {
 	}
 
 	decoder(data) {
-		const b = data.readUInt8(0);
-		const a = data.readUInt8(1);
-		this.a = a;
-		this.b = b;
+		this.denominator = data.readUInt8(0);
+		this.numerator = data.readUInt8(1);
 		return 2;
 	}
 
 	encoder(data) {
-		data.writeUInt8(this.b, 0);
-		data.writeUInt8(this.a, 1);
+		data.writeUInt8(this.denominator, 0);
+		data.writeUInt8(this.numerator, 1);
 	}
 }
 exports.Fixed8 = Fixed8;
@@ -132,55 +189,46 @@ class Rect extends Data {
 	}
 
 	get nBits() {
-		let m = Math.max(this.xMin, this.xMax, this.yMin, this.yMax);
-		let i = 0;
-		for (; m; m >>= 1) {
-			i++;
-		}
-		return Math.max(this.forceNBits, i);
+		return Math.max(this.forceNBits, Math.max(
+			bitCountS(this.xMin),
+			bitCountS(this.xMax),
+			bitCountS(this.yMin),
+			bitCountS(this.yMax)
+		));
 	}
 
 	get size() {
-		return Math.ceil((this.nBits * 4 + 5) / 8);
+		return bitCountToBytes(5 + (this.nBits * 4));
 	}
 
 	decoder(data) {
-		let i = 0;
-		const nBits = data.readUInt8(i) >> 3;
-		let b = 5;
+		const bR = bitReader(data, 0);
+		let b = 0;
+		const nBits = bR(5, b);
+		b += 5;
 		const values = [];
-		for (let xy = 0; xy < 4; xy++) {
-			let value = 0;
-			for (let n = 0; n < nBits; n++) {
-				const bitI = b % 8;
-				i = (b - bitI) / 8;
-				b++;
-				const v = (data.readUInt8(i) >> (7 - bitI)) & 1;
-				value = (value << 1) | v;
-			}
-			values.push(value);
+		for (let i = 0; i < 4; i++) {
+			values.push(bR(nBits, b, true));
+			b += nBits;
 		}
-		if (!(Math.max(...values) >> (nBits - 1))) {
-			this.forceNBits = nBits;
-		}
+		this.forceNBits = nBits;
 		[this.xMin, this.xMax, this.yMin, this.yMax] = values;
-		return i + 1;
+		return bitCountToBytes(b);
 	}
 
 	encoder(data) {
-		let i = 0;
-		data.fill(0);
 		const {nBits} = this;
-		data.writeUInt8(nBits << 3, i);
-		let b = 5;
+		const bW = bitWriter(data, 0);
+		let b = 0;
+		bW(nBits, 5, b);
+		b += 5;
 		for (const value of [this.xMin, this.xMax, this.yMin, this.yMax]) {
-			for (let n = 0; n < nBits; n++) {
-				const v = (value >> ((nBits - 1) - n)) & 1;
-				const bitI = b % 8;
-				i = (b - bitI) / 8;
-				b++;
-				data.writeUInt8(data.readUInt8(i) | (v << (7 - bitI)), i);
-			}
+			bW(value, nBits, b);
+			b += nBits;
+		}
+		const over = b % 8;
+		if (over) {
+			bW(0, 8 - over, b);
 		}
 	}
 }
