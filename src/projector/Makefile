@@ -14,7 +14,6 @@ matanuionlinegameii.swf:
 		matanuionlinegameii.as
 	swfcombine \
 		-v \
-		-z \
 		-m \
 		-l \
 		-o matanuionlinegameii.swf \
