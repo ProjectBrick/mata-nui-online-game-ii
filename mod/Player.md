@@ -85,6 +85,12 @@ else
 
 # Loading glitch from reloading race condition
 
+First always check that some frames have been loaded first.
+
+Instead of reloading the movie mark it as loaded with a variable the movie can check.
+
+Each scene that needs to use this variable instead is updated automatically in the build script.
+
 ## `scripts` -> `DefineSprite (134)` -> `frame 13`
 
 Original:
@@ -130,7 +136,7 @@ if(numBytesTotal > 100)
 {
 	if(numBytesLoaded == numBytesTotal and numFramesLoaded == numFramesTotal and numFramesLoaded > 0)
 	{
-		_root.holder.gotoAndPlay(1);
+		_root.holder.__loaded = true;
 	}
 	else
 	{

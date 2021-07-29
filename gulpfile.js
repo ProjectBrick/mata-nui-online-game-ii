@@ -37,10 +37,7 @@ const {
 	SourceZip,
 	SourceDir
 } = require('./util/sources');
-const {
-	Swf,
-	DefineEditText
-} = require('./util/swf');
+const {mod} = require('./util/mod');
 const {Server} = require('./util/server');
 const {
 	version,
@@ -71,28 +68,6 @@ const sources = {
 		'hahli/'
 	)
 };
-
-function fixPlayerFonts(data) {
-	// Set dynamic text fields to use the embedded fonts available.
-	// This avoids text issues where the font is not available.
-	// Only fix those where font was embedded just not set to use.
-	const swf = new Swf();
-	swf.decode(data);
-	const unchanged = new Set([97, 103, 243, 265]);
-	for (const tag of swf.tags) {
-		if (tag.code !== DefineEditText.CODE) {
-			continue;
-		}
-		const det = new DefineEditText();
-		det.decode(tag.data);
-		if (unchanged.has(det.fontId)) {
-			continue;
-		}
-		det.useOutlines = true;
-		tag.data = det.encode();
-	}
-	return swf.encode();
-}
 
 async function shockpkgFile(pkg) {
 	return (new Manager()).with(
@@ -186,10 +161,7 @@ async function readSources(order, each) {
 					let data = await propercase.dataCached(
 						await entry.read()
 					);
-					if (entry.path.toLowerCase() === 'player.swf') {
-						data = fixPlayerFonts(data);
-					}
-					return data;
+					return mod(entry.path, data);
 				}
 			});
 		});
