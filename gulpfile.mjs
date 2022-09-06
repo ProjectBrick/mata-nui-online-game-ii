@@ -36,7 +36,7 @@ import {Propercase} from './util/propercase.mjs';
 import {
 	SourceZip,
 	SourceDir
-} from './util/sources.mjs';
+} from './util/source.mjs';
 import {mod} from './util/mod.mjs';
 
 const {
