@@ -1,6 +1,4 @@
-'use strict';
-
-function subview(data, start, size = null) {
+export function subview(data, start, size = null) {
 	size = size === null ? data.length - start : size;
 	const r = data.subarray(start, start + size);
 	if (r.length < size) {
@@ -8,23 +6,20 @@ function subview(data, start, size = null) {
 	}
 	return r;
 }
-exports.subview = subview;
 
-function bitCountU(i) {
+export function bitCountU(i) {
 	let n = 0;
 	for (; i; i >>= 1) {
 		n++;
 	}
 	return n;
 }
-exports.bitCountU = bitCountU;
 
-function bitCountS(i) {
+export function bitCountS(i) {
 	return bitCountU(i < 0 ? i ^ -1 : i) + 1;
 }
-exports.bitCountS = bitCountS;
 
-function bitReader(data, start) {
+export function bitReader(data, start) {
 	return (c, b, s = false) => {
 		let r = 0;
 		for (let i = 0; i < c; i++) {
@@ -41,9 +36,8 @@ function bitReader(data, start) {
 		return r;
 	};
 }
-exports.bitReader = bitReader;
 
-function bitWriter(data, start) {
+export function bitWriter(data, start) {
 	return (v, c, b) => {
 		for (let i = 0; i < c; i++) {
 			const bI = b + i;
@@ -61,15 +55,13 @@ function bitWriter(data, start) {
 		}
 	};
 }
-exports.bitWriter = bitWriter;
 
-function bitCountToBytes(count) {
+export function bitCountToBytes(count) {
 	const over = count % 8;
 	return ((count - over) / 8) + (over ? 1 : 0);
 }
-exports.bitCountToBytes = bitCountToBytes;
 
-function bufferReadCstr(buffer, offset) {
+export function bufferReadCstr(buffer, offset) {
 	const chars = [];
 	for (;;) {
 		const c = buffer.readUInt8(offset++);
@@ -80,18 +72,16 @@ function bufferReadCstr(buffer, offset) {
 	}
 	return String.fromCharCode(...chars);
 }
-exports.bufferReadCstr = bufferReadCstr;
 
-function bufferWriteCstr(buffer, str, offset) {
+export function bufferWriteCstr(buffer, str, offset) {
 	const l = str.length;
 	const d = buffer.subarray(offset, offset + l + 1);
 	d.write(str, 'ascii');
 	d.writeUInt8(0, l);
 	return d;
 }
-exports.bufferWriteCstr = bufferWriteCstr;
 
-class Data extends Object {
+export class Data extends Object {
 	constructor() {
 		super();
 	}
@@ -115,9 +105,8 @@ class Data extends Object {
 		return data;
 	}
 }
-exports.Data = Data;
 
-class Fixed8 extends Data {
+export class Fixed8 extends Data {
 	constructor() {
 		super();
 
@@ -140,9 +129,8 @@ class Fixed8 extends Data {
 		data.writeUInt8(this.numerator, 1);
 	}
 }
-exports.Fixed8 = Fixed8;
 
-class RGBA extends Data {
+export class RGBA extends Data {
 	constructor() {
 		super();
 
@@ -175,9 +163,8 @@ class RGBA extends Data {
 		data.writeUInt8(this.a, 3);
 	}
 }
-exports.Fixed8 = Fixed8;
 
-class Rect extends Data {
+export class Rect extends Data {
 	constructor() {
 		super();
 
@@ -232,9 +219,8 @@ class Rect extends Data {
 		}
 	}
 }
-exports.Rect = Rect;
 
-class Tag extends Data {
+export class Tag extends Data {
 	constructor() {
 		super();
 
@@ -283,9 +269,8 @@ class Tag extends Data {
 		d.copy(data, i);
 	}
 }
-exports.Tag = Tag;
 
-class DefineEditText extends Data {
+export class DefineEditText extends Data {
 	static CODE = 37;
 
 	constructor() {
@@ -480,9 +465,8 @@ class DefineEditText extends Data {
 		}
 	}
 }
-exports.DefineEditText = DefineEditText;
 
-class Swf extends Data {
+export class Swf extends Data {
 	constructor() {
 		super();
 
@@ -566,4 +550,3 @@ class Swf extends Data {
 		}
 	}
 }
-exports.Swf = Swf;

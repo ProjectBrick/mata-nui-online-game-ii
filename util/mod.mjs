@@ -1,14 +1,12 @@
-'use strict';
-
-const {
+import {
 	Swf,
 	Tag,
 	DefineEditText
-} = require('./swf');
-const {
+} from './swf.mjs';
+import {
 	bufferToHex,
 	bufferFromHex
-} = require('./buffer');
+} from './buffer.mjs';
 
 const TAG_SHOW_FRAME = 1;
 const TAG_SET_BACKGROUND_COLOR = 9;
@@ -330,7 +328,7 @@ const mods = [
 	[/\.swf$/, [fixLoadCheck]]
 ];
 
-function mod(file, data) {
+export function mod(file, data) {
 	for (const [reg, funs] of mods) {
 		if (reg.test(file)) {
 			if (funs.length) {
@@ -346,4 +344,3 @@ function mod(file, data) {
 	}
 	throw new Error(`No mod for: ${file}`);
 }
-exports.mod = mod;
