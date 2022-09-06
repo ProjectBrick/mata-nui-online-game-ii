@@ -37,7 +37,11 @@ import {
 } from './util/sources.mjs';
 import {mod} from './util/mod.mjs';
 import {Server} from './util/server.mjs';
+
 const {
+	appName,
+	appNameShort,
+	appDomain,
 	version,
 	author,
 	copyright
@@ -47,9 +51,6 @@ const pipelineP = util.promisify(stream.pipeline);
 const imageSizeP = util.promisify(imageSize);
 const innosetupP = util.promisify(innosetup);
 
-const appName = 'Mata Nui Online Game II';
-const appNameShort = 'MNOG II';
-const appDomain = 'io.github.projectbrick.MataNuiOnlineGameII';
 const distName = slugify(`${appName} ${version}`);
 const versionShort = version.split('.').slice(0, 2).join('.');
 const serverPort = +process.env.SERVER_PORT;
