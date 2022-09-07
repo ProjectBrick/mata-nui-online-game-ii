@@ -26,92 +26,44 @@ import {
 	versionShort,
 	distName
 } from './util/meta.mjs';
-import {
-	pngs2bmps,
-	readIco,
-	readIcns
-} from './util/image.mjs';
+import {pngs2bmps, readIco, readIcns} from './util/image.mjs';
 import {docs} from './util/doc.mjs';
-import {
-	makeZip,
-	makeTgz,
-	makeExe,
-	makeDmg
-} from './util/dist.mjs';
+import {makeZip, makeTgz, makeExe, makeDmg} from './util/dist.mjs';
 import {templateStrings} from './util/string.mjs';
 import {Propercase} from './util/propercase.mjs';
-import {
-	SourceZip,
-	SourceDir
-} from './util/source.mjs';
+import {SourceZip, SourceDir} from './util/source.mjs';
 import {mod} from './util/mod.mjs';
 
-const sources = {
-	'mod': () => new SourceDir(
-		'mod'
-	),
-	'recreation': () => new SourceDir(
-		'recreation'
-	),
-	'original': () => new SourceZip(
-		'original/lego/hahli.zip',
-		'hahli/'
-	)
-};
-
-async function readSources(order, each) {
+async function * readSources(sources) {
 	const propercase = new Propercase('propercase.txt');
 	propercase.cacheDir = '.cache/propercase';
 	await propercase.init();
-
-	const ordered = order.map(id => ({
-		id,
-		source: sources[id]()
-	}));
-	for (const {source} of ordered) {
-		await source.open();
+	await Promise.all(sources.map(s => s.open()));
+	const m = new Map();
+	for (const source of sources) {
+		for (const [path, read] of source.itter()) {
+			m.set(path.toLowerCase(), [propercase.name(path), async () => mod(
+				path,
+				await propercase.dataCached(await read())
+			)]);
+		}
 	}
-
-	const mapped = new Map();
-	for (const {id, source} of ordered) {
-		await source.each(async entry => {
-			const p = entry.path.toLowerCase();
-			if (p.endsWith('/') || mapped.has(p)) {
-				return;
-			}
-			mapped.set(p, {
-				source: id,
-				path: propercase.name(entry.path),
-				read: async () => {
-					let data = await propercase.dataCached(
-						await entry.read()
-					);
-					return mod(entry.path, data);
-				}
-			});
-		});
+	for (const id of [...m.keys()].sort()) {
+		yield m.get(id);
 	}
-	for (const id of [...mapped.keys()].sort()) {
-		await each(mapped.get(id));
-	}
-
-	for (const {source} of ordered) {
-		await source.close();
-	}
+	await Promise.all(sources.map(s => s.close()));
 }
 
-async function readSourcesFiltered(each) {
-	const sources = [
-		'mod',
-		'recreation',
-		'original'
-	];
-	await readSources(sources, async entry => {
-		if (!/^[^.][^\\/]+\.(swf)$/i.test(entry.path)) {
-			return;
+async function * readSourcesFiltered() {
+	for await (const [file, read] of readSources([
+		new SourceDir('mod'),
+		new SourceDir('recreation'),
+		new SourceZip('original/lego/hahli.zip', 'hahli/')
+	])) {
+		if (/^[^.][^\\/]+\.(swf)$/i.test(file)) {
+			yield [file, read];
 		}
-		await each(entry);
-	});
+	}
 }
 
 async function bundle(bundle, pkg, delay = false) {
@@ -128,18 +80,17 @@ async function bundle(bundle, pkg, delay = false) {
 				'matanuionlinegameii.swf',
 				'src/projector/matanuionlinegameii.swf'
 			);
-			await readSourcesFiltered(async entry => {
-				await b.createResourceFile(entry.path, await entry.read());
-			});
+			for await (const [file, read] of readSourcesFiltered()) {
+				await b.createResourceFile(file, await read());
+			}
 		}
 	);
 }
 
 async function browser(dest) {
-	await readSourcesFiltered(async entry => {
-		const data = await entry.read();
-		await fse.outputFile(`${dest}/${entry.path}`, data);
-	});
+	for await (const [file, read] of readSourcesFiltered()) {
+		await fse.outputFile(`${dest}/${file}`, await read());
+	}
 	await Promise.all([
 		'matanuionlinegameii.swf',
 		'main.js',
