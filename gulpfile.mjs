@@ -16,9 +16,16 @@ import {
 } from '@shockpkg/swf-projector';
 
 import {
-	filename,
-	slugify
-} from './util/string.mjs';
+	appName,
+	appDomain,
+	version,
+	author,
+	copyright,
+	appFile,
+	appDmgTitle,
+	versionShort,
+	distName
+} from './util/meta.mjs';
 import {
 	imageSize,
 	pngs2bmps,
@@ -32,24 +39,13 @@ import {
 	makeExe,
 	makeDmg
 } from './util/dist.mjs';
+import {templateStrings} from './util/string.mjs';
 import {Propercase} from './util/propercase.mjs';
 import {
 	SourceZip,
 	SourceDir
 } from './util/source.mjs';
 import {mod} from './util/mod.mjs';
-
-const {
-	appName,
-	appNameShort,
-	appDomain,
-	version,
-	author,
-	copyright
-} = await fse.readJSON('./package.json');
-
-const distName = slugify(`${appName}-${version}`);
-const versionShort = version.split('.').slice(0, 2).join('.');
 
 const sources = {
 	'mod': () => new SourceDir(
@@ -63,21 +59,6 @@ const sources = {
 		'hahli/'
 	)
 };
-
-async function shockpkgFile(pkg) {
-	return (new Manager()).with(
-		async manager => manager.packageInstallFile(pkg)
-	);
-}
-
-function templateStrings(str, vars) {
-	return str.replace(/\$\{([^\}]*?)\}/g, (_, p1) => {
-		if (!vars.hasOwnProperty(p1)) {
-			throw new Error(`Undefined template variable: ${p1}`);
-		}
-		return vars[p1];
-	});
-}
 
 async function readSources(order, each) {
 	const propercase = new Propercase('propercase.txt');
@@ -135,17 +116,14 @@ async function readSourcesFiltered(each) {
 }
 
 async function bundle(bundle, pkg, delay = false) {
+	const swfv = 6;
+	const [w, h] = [640, 480];
+	const fps = 30;
+	const bg = 0x000000;
+	const url = 'matanuionlinegameii.swf';
 	await bundle.withData(
-		await shockpkgFile(pkg),
-		loader(
-			6,
-			640,
-			480,
-			30,
-			0x000000,
-			'matanuionlinegameii.swf',
-			delay ? 30 / 2 : 0
-		),
+		await (new Manager()).with(m => m.packageInstallFile(pkg)),
+		loader(swfv, w, h, fps, bg, url, delay ? Math.round(fps / 2) : 0),
 		async b => {
 			await b.copyResourceFile(
 				'matanuionlinegameii.swf',
@@ -158,103 +136,18 @@ async function bundle(bundle, pkg, delay = false) {
 	);
 }
 
-async function createBundleMac(path) {
-	const pkgInfo = 'APPL????';
-	const infoPlist = new Plist(new ValueDict(new Map(Object.entries({
-		CFBundleInfoDictionaryVersion: new ValueString('6.0'),
-		CFBundleDevelopmentRegion: new ValueString('en-US'),
-		CFBundleExecutable: new ValueString(''),
-		CFBundleIconFile: new ValueString(''),
-		CFBundleName: new ValueString(appName),
-		NSHumanReadableCopyright: new ValueString(copyright),
-		CFBundleGetInfoString: new ValueString(copyright),
-		CFBundleIdentifier: new ValueString(appDomain),
-		CFBundleVersion: new ValueString(version),
-		CFBundleLongVersionString: new ValueString(version),
-		CFBundleShortVersionString: new ValueString(versionShort),
-		CFBundlePackageType: new ValueString(pkgInfo.substr(0, 4)),
-		CFBundleSignature: new ValueString(pkgInfo.substr(4)),
-		NSAppTransportSecurity: new ValueDict(new Map(Object.entries({
-			NSAllowsArbitraryLoads: new ValueBoolean(true)
-		}))),
-		NSSupportsAutomaticGraphicsSwitching: new ValueBoolean(true),
-		NSHighResolutionCapable: new ValueBoolean(true),
-		CSResourcesFileMapped: new ValueBoolean(true),
-		LSPrefersCarbon: new ValueString('YES'),
-		NSAppleScriptEnabled: new ValueString('YES'),
-		NSMainNibFile: new ValueString('MainMenu'),
-		NSPrincipalClass: new ValueString('NSApplication')
-	}))));
-
-	const bundle = new BundleMacApp(path);
-	const {projector} = bundle;
-	projector.binaryName = appName;
-	projector.pkgInfoData = pkgInfo;
-	projector.infoPlistDocument = infoPlist;
-	projector.iconData = await readIcns('res/app-icon-mac.iconset');
-	projector.patchWindowTitle = appName;
-	projector.removeInfoPlistStrings = true;
-	projector.removeCodeSignature = true;
-	return bundle;
-}
-
-async function createBundleWindows(path) {
-	const file = path.split(/[/\\]/).pop();
-	const fileName = file.replace(/\.exe$/i, '');
-	const versionStrings = {
-		FileVersion: version,
-		ProductVersion: versionShort,
-		CompanyName: author,
-		FileDescription: appName,
-		LegalCopyright: copyright,
-		ProductName: appName,
-		LegalTrademarks: '',
-		OriginalFilename: file,
-		InternalName: fileName,
-		Comments: ''
-	};
-
-	const bundle = new BundleWindows32(path);
-	const {projector} = bundle;
-	projector.versionStrings = versionStrings;
-	projector.iconData = await readIco('res/app-icon-windows');
-	projector.patchWindowTitle = appNameShort;
-	projector.removeCodeSignature = true;
-	return bundle;
-}
-
-async function createBundleLinux32(path) {
-	const bundle = new BundleLinux32(path);
-	const {projector} = bundle;
-	projector.patchProjectorPath = true;
-	projector.patchWindowTitle = appName;
-	return bundle;
-}
-
-async function createBundleLinux64(path) {
-	const bundle = new BundleLinux64(path);
-	const {projector} = bundle;
-	projector.patchProjectorPath = true;
-	projector.patchProjectorOffset = true;
-	projector.patchWindowTitle = appName;
-	return bundle;
-}
-
-async function buildBrowser(dir, nested) {
-	const dest = `build/${dir}`;
-	const destData = nested ? `${dest}/data` : dest;
-	await fse.remove(dest);
+async function browser(dest) {
 	await readSourcesFiltered(async entry => {
 		const data = await entry.read();
-		await fse.outputFile(`${destData}/${entry.path}`, data);
+		await fse.outputFile(`${dest}/${entry.path}`, data);
 	});
 	await Promise.all([
 		'matanuionlinegameii.swf',
 		'main.js',
 		'main.css'
-	].map(f => fse.copy(`src/browser/${f}`, `${destData}/${f}`)));
+	].map(f => fse.copy(`src/browser/${f}`, `${dest}/${f}`)));
 	const defaultPrefix = 'matanuionlinegameii.';
-	await fse.outputFile(`${destData}/index.html`, templateStrings(
+	await fse.outputFile(`${dest}/index.html`, templateStrings(
 		await fse.readFile('src/browser/index.html', 'utf8'),
 		{
 			LS_PREFIX: process.env.MNOGII_LS_PREFIX || defaultPrefix,
@@ -264,41 +157,6 @@ async function buildBrowser(dir, nested) {
 			API_LINK: process.env.MNOGII_API_LINK || ''
 		}
 	));
-	if (nested) {
-		await fse.outputFile(
-			`${dest}/${appName}.html`,
-			'<meta http-equiv="refresh" content="0;url=data/index.html">\n'
-		);
-	}
-	await docs('docs', dest);
-}
-
-async function buildWindows(dir, pkg) {
-	const dest = `build/${dir}`;
-	await fse.remove(dest);
-	await bundle(await createBundleWindows(`${dest}/${appName}.exe`), pkg);
-	await docs('docs', dest);
-}
-
-async function buildMac(dir, pkg) {
-	const dest = `build/${dir}`;
-	await fse.remove(dest);
-	await bundle(await createBundleMac(`${dest}/${appName}.app`), pkg);
-	await docs('docs', dest);
-}
-
-async function buildLinux32(dir, pkg) {
-	const dest = `build/${dir}`;
-	await fse.remove(dest);
-	await bundle(await createBundleLinux32(`${dest}/${appName}`), pkg, true);
-	await docs('docs', dest);
-}
-
-async function buildLinux64(dir, pkg) {
-	const dest = `build/${dir}`;
-	await fse.remove(dest);
-	await bundle(await createBundleLinux64(`${dest}/${appName}`), pkg, true);
-	await docs('docs', dest);
 }
 
 gulp.task('clean', async () => {
@@ -308,41 +166,108 @@ gulp.task('clean', async () => {
 });
 
 gulp.task('build:pages', async () => {
-	await buildBrowser('pages', false);
+	const dest = 'build/pages';
+	await fse.remove(dest);
+	await browser(dest);
+	await docs('docs', dest);
 });
 
 gulp.task('build:browser', async () => {
-	await buildBrowser('browser', true);
+	const dest = 'build/browser';
+	await fse.remove(dest);
+	await browser(`${dest}/data`);
+	await fse.outputFile(
+		`${dest}/${appFile}.html`,
+		'<meta http-equiv="refresh" content="0;url=data/index.html">\n'
+	);
+	await docs('docs', dest);
 });
 
 gulp.task('build:windows', async () => {
-	await buildWindows(
-		'windows',
-		'flash-player-32.0.0.465-windows-sa-debug'
-	);
+	const dest = 'build/windows';
+	await fse.remove(dest);
+	const file = `${appFile}.exe`;
+	const b = new BundleWindows32(`${dest}/${file}`);
+	b.projector.versionStrings = {
+		FileVersion: version,
+		ProductVersion: versionShort,
+		CompanyName: author,
+		FileDescription: appName,
+		LegalCopyright: copyright,
+		ProductName: appName,
+		LegalTrademarks: '',
+		OriginalFilename: file,
+		InternalName: appFile,
+		Comments: ''
+	};
+	b.projector.iconData = await readIco('res/app-icon-windows');
+	b.projector.patchWindowTitle = appName;
+	b.projector.removeCodeSignature = true;
+	await bundle(b, 'flash-player-32.0.0.465-windows-sa-debug');
+	await docs('docs', dest);
 });
 
 gulp.task('build:mac', async () => {
-	// Release versions on Mac have slow performance when resized larger.
-	// Debug versions do not have this performance issue.
-	await buildMac(
-		'mac',
-		'flash-player-32.0.0.465-mac-sa-debug-zip'
-	);
+	// Release projectors on Mac have slow performance when resized larger.
+	// Debug projectors do not have this performance issue.
+	const dest = 'build/mac';
+	await fse.remove(dest);
+	const pkgInfo = 'APPL????';
+	const b = new BundleMacApp(`${dest}/${appFile}.app`);
+	b.projector.binaryName = appFile;
+	b.projector.pkgInfoData = pkgInfo;
+	b.projector.infoPlistData = (new Plist(new ValueDict(new Map([
+		['CFBundleInfoDictionaryVersion', new ValueString('6.0')],
+		['CFBundleDevelopmentRegion', new ValueString('en-US')],
+		['CFBundleExecutable', new ValueString('')],
+		['CFBundleIconFile', new ValueString('')],
+		['CFBundleName', new ValueString(appName)],
+		['NSHumanReadableCopyright', new ValueString(copyright)],
+		['CFBundleGetInfoString', new ValueString(copyright)],
+		['CFBundleIdentifier', new ValueString(appDomain)],
+		['CFBundleVersion', new ValueString(version)],
+		['CFBundleLongVersionString', new ValueString(version)],
+		['CFBundleShortVersionString', new ValueString(versionShort)],
+		['CFBundlePackageType', new ValueString(pkgInfo.substring(0, 4))],
+		['CFBundleSignature', new ValueString(pkgInfo.substring(4))],
+		['NSAppTransportSecurity', new ValueDict(new Map([
+			['NSAllowsArbitraryLoads', new ValueBoolean(true)]
+		]))],
+		['NSSupportsAutomaticGraphicsSwitching', new ValueBoolean(true)],
+		['NSHighResolutionCapable', new ValueBoolean(true)],
+		['CSResourcesFileMapped', new ValueBoolean(true)],
+		['LSPrefersCarbon', new ValueString('YES')],
+		['NSAppleScriptEnabled', new ValueString('YES')],
+		['NSMainNibFile', new ValueString('MainMenu')],
+		['NSPrincipalClass', new ValueString('NSApplication')]
+	])))).toXml();
+	b.projector.iconData = await readIcns('res/app-icon-mac.iconset');
+	b.projector.patchWindowTitle = appName;
+	b.projector.removeInfoPlistStrings = true;
+	b.projector.removeCodeSignature = true;
+	await bundle(b, 'flash-player-32.0.0.465-mac-sa-debug-zip');
+	await docs('docs', dest);
 });
 
 gulp.task('build:linux-i386', async () => {
-	await buildLinux32(
-		'linux-i386',
-		'flash-player-11.2.202.644-linux-i386-sa-debug'
-	);
+	const dest = 'build/linux-i386';
+	await fse.remove(dest);
+	const b = new BundleLinux32(`${dest}/${appFile}`);
+	b.projector.patchProjectorPath = true;
+	b.projector.patchWindowTitle = appName;
+	await bundle(b, 'flash-player-11.2.202.644-linux-i386-sa-debug', true);
+	await docs('docs', dest);
 });
 
 gulp.task('build:linux-x86_64', async () => {
-	await buildLinux64(
-		'linux-x86_64',
-		'flash-player-32.0.0.465-linux-x86_64-sa-debug'
-	);
+	const dest = 'build/linux-x86_64';
+	await fse.remove(dest);
+	const b = new BundleLinux64(`${dest}/${appFile}`);
+	b.projector.patchProjectorPath = true;
+	b.projector.patchProjectorOffset = true;
+	b.projector.patchWindowTitle = appName;
+	await bundle(b, 'flash-player-32.0.0.465-linux-x86_64-sa-debug', true);
+	await docs('docs', dest);
 });
 
 gulp.task('dist:browser:zip', async () => {
@@ -375,7 +300,7 @@ gulp.task('dist:windows:exe', async () => {
 	await makeExe('innosetup.iss', {
 		VarId: appDomain,
 		VarName: appName,
-		VarNameFile: filename(appName),
+		VarNameFile: appFile,
 		VarVersion: version,
 		VarPublisher: author,
 		VarCopyright: copyright,
@@ -384,13 +309,13 @@ gulp.task('dist:windows:exe', async () => {
 		VarWizardImageHeader: `${resHeaders}/*.bmp`,
 		VarWizardImageSidebar: `${resSidebars}/*.bmp`,
 		VarWizardImageAlphaFormat: 'none',
-		VarExeName: `${filename(appName)}.exe`,
+		VarExeName: `${appFile}.exe`,
 		VarOutDir: outDir,
 		VarOutFile: outFile,
-		VarSource: `build/windows/*`,
+		VarSource: 'build/windows/*',
 		VarArchitecturesInstallIn64BitMode: '',
 		VarArchitecturesAllowed: '',
-		VarReadMeName: `${filename(appName)} - README`,
+		VarReadMeName: `${appFile} - README`,
 		VarReadMeFile: 'README.html'
 	});
 	await fse.remove(res);
@@ -408,7 +333,7 @@ gulp.task('dist:mac:dmg', async () => {
 	await fse.outputFile(icon, await readIcns('res/dmg-icon.iconset'));
 	await makeDmg(output, {
 		format: 'UDBZ',
-		title: appName,
+		title: appDmgTitle,
 		'icon-size': 128,
 		icon,
 		background,
@@ -423,7 +348,7 @@ gulp.task('dist:mac:dmg', async () => {
 				x: (width / 2) - 160,
 				y: 108,
 				type: 'file',
-				path: `build/mac/${appName}.app`
+				path: `build/mac/${appFile}.app`
 			},
 			{
 				x: (width / 2) + 160,

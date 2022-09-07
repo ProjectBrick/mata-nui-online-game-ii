@@ -1,7 +1,6 @@
 {
 	"private": true,
 	"appName": "Mata Nui Online Game II",
-	"appNameShort": "MNOG II",
 	"appDomain": "io.github.projectbrick.MataNuiOnlineGameII",
 	"version": "1.0.2",
 	"author": "Project Brick",
