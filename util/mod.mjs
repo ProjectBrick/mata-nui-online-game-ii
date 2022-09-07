@@ -1,8 +1,4 @@
-import {
-	Swf,
-	Tag,
-	DefineEditText
-} from './swf.mjs';
+import {Swf, Tag, DefineEditText} from './swf.mjs';
 
 export function bufferToHex(buffer) {
 	return buffer.toString('hex')

@@ -27,7 +27,6 @@ import {
 	distName
 } from './util/meta.mjs';
 import {
-	imageSize,
 	pngs2bmps,
 	readIco,
 	readIcns
@@ -327,7 +326,10 @@ gulp.task('dist:mac:tgz', async () => {
 
 gulp.task('dist:mac:dmg', async () => {
 	const background = 'res/dmg-background/dmg-background.png';
-	const {width, height} = await imageSize(background);
+	const size = {
+		width: 640,
+		height: 512
+	};
 	const output = `dist/${distName}-Mac.dmg`;
 	const icon = `${output}.icns`;
 	await fse.outputFile(icon, await readIcns('res/dmg-icon.iconset'));
@@ -338,26 +340,23 @@ gulp.task('dist:mac:dmg', async () => {
 		icon,
 		background,
 		window: {
-			size: {
-				width,
-				height
-			}
+			size
 		},
 		contents: [
 			{
-				x: (width / 2) - 160,
+				x: (size.width / 2) - 160,
 				y: 108,
 				type: 'file',
 				path: `build/mac/${appFile}.app`
 			},
 			{
-				x: (width / 2) + 160,
+				x: (size.width / 2) + 160,
 				y: 108,
 				type: 'link',
 				path: '/Applications'
 			},
 			{
-				x: (width / 2),
+				x: (size.width / 2),
 				y: 364,
 				type: 'file',
 				path: 'build/mac/README.html'
