@@ -35,16 +35,14 @@ import {SourceZip, SourceDir} from './util/source.mjs';
 import {mod} from './util/mod.mjs';
 
 async function * readSources(sources) {
-	const propercase = new Propercase('propercase.txt');
-	propercase.cacheDir = '.cache/propercase';
-	await propercase.init();
+	const pc = await Propercase.init('propercase.txt', '.cache/propercase');
 	await Promise.all(sources.map(s => s.open()));
 	const m = new Map();
 	for (const source of sources) {
 		for (const [path, read] of source.itter()) {
-			m.set(path.toLowerCase(), [propercase.name(path), async () => mod(
+			m.set(path.toLowerCase(), [pc.name(path), async () => mod(
 				path,
-				await propercase.dataCached(await read())
+				await pc.dataCached(await read())
 			)]);
 		}
 	}
