@@ -129,3 +129,20 @@ export class SourceDir extends Source {
 		}
 	}
 }
+
+export async function * readSources(sources) {
+	await Promise.all(sources.map(s => s.open()));
+	const m = new Map();
+	for (const source of sources) {
+		for (const [path, read] of source.itter()) {
+			const id = path.toLowerCase();
+			if (!m.has(id)) {
+				m.set(id, [path, read]);
+			}
+		}
+	}
+	for (const id of [...m.keys()].sort()) {
+		yield m.get(id);
+	}
+	await Promise.all(sources.map(s => s.close()));
+}

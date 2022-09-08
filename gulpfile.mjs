@@ -31,35 +31,19 @@ import {docs} from './util/doc.mjs';
 import {makeZip, makeTgz, makeExe, makeDmg} from './util/dist.mjs';
 import {templateStrings} from './util/string.mjs';
 import {Propercase} from './util/propercase.mjs';
-import {SourceZip, SourceDir} from './util/source.mjs';
+import {SourceZip, SourceDir, readSources} from './util/source.mjs';
 import {mod} from './util/mod.mjs';
 
-async function * readSources(sources) {
+async function * files() {
 	const pc = await Propercase.init('propercase.txt', '.cache/propercase');
-	await Promise.all(sources.map(s => s.open()));
-	const m = new Map();
-	for (const source of sources) {
-		for (const [path, read] of source.itter()) {
-			m.set(path.toLowerCase(), [pc.name(path), async () => mod(
-				path,
-				await pc.dataCached(await read())
-			)]);
-		}
-	}
-	for (const id of [...m.keys()].sort()) {
-		yield m.get(id);
-	}
-	await Promise.all(sources.map(s => s.close()));
-}
-
-async function * readSourcesFiltered() {
 	for await (const [file, read] of readSources([
 		new SourceDir('mod'),
 		new SourceDir('recreation'),
 		new SourceZip('original/lego/hahli.zip', 'hahli/')
 	])) {
 		if (/^[^.][^\\/]+\.(swf)$/i.test(file)) {
-			yield [file, read];
+			const data = mod(file, await pc.dataCached(await read()));
+			yield [pc.name(file), data];
 		}
 	}
 }
@@ -74,20 +58,20 @@ async function bundle(bundle, pkg, delay = false) {
 		await (new Manager()).with(m => m.packageInstallFile(pkg)),
 		loader(swfv, w, h, fps, bg, url, delay ? Math.round(fps / 2) : 0),
 		async b => {
+			for await (const [file, data] of files()) {
+				await b.createResourceFile(file, data);
+			}
 			await b.copyResourceFile(
 				'matanuionlinegameii.swf',
 				'src/projector/matanuionlinegameii.swf'
 			);
-			for await (const [file, read] of readSourcesFiltered()) {
-				await b.createResourceFile(file, await read());
-			}
 		}
 	);
 }
 
 async function browser(dest) {
-	for await (const [file, read] of readSourcesFiltered()) {
-		await fse.outputFile(`${dest}/${file}`, await read());
+	for await (const [file, data] of files()) {
+		await fse.outputFile(`${dest}/${file}`, data);
 	}
 	await Promise.all([
 		'matanuionlinegameii.swf',
