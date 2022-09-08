@@ -1,4 +1,5 @@
-import fse from 'fs-extra';
+import {readFile} from 'fs/promises';
+
 import gulp from 'gulp';
 import {Manager} from '@shockpkg/core';
 import {
@@ -29,12 +30,13 @@ import {
 import {pngs2bmps, readIco, readIcns} from './util/image.mjs';
 import {docs} from './util/doc.mjs';
 import {makeZip, makeTgz, makeExe, makeDmg} from './util/dist.mjs';
+import {copyFile, outputFile, remove} from './util/fs.mjs';
 import {templateStrings} from './util/string.mjs';
 import {Propercase} from './util/propercase.mjs';
 import {SourceZip, SourceDir, readSources} from './util/source.mjs';
 import {mod} from './util/mod.mjs';
 
-async function * files() {
+async function * resources() {
 	const pc = await Propercase.init('propercase.txt', '.cache/propercase');
 	for await (const [file, read] of readSources([
 		new SourceDir('mod'),
@@ -58,7 +60,7 @@ async function bundle(bundle, pkg, delay = false) {
 		await (new Manager()).with(m => m.packageInstallFile(pkg)),
 		loader(swfv, w, h, fps, bg, url, delay ? Math.round(fps / 2) : 0),
 		async b => {
-			for await (const [file, data] of files()) {
+			for await (const [file, data] of resources()) {
 				await b.createResourceFile(file, data);
 			}
 			await b.copyResourceFile(
@@ -70,17 +72,17 @@ async function bundle(bundle, pkg, delay = false) {
 }
 
 async function browser(dest) {
-	for await (const [file, data] of files()) {
-		await fse.outputFile(`${dest}/${file}`, data);
+	for await (const [file, data] of resources()) {
+		await outputFile(`${dest}/${file}`, data);
 	}
 	await Promise.all([
 		'matanuionlinegameii.swf',
 		'main.js',
 		'main.css'
-	].map(f => fse.copy(`src/browser/${f}`, `${dest}/${f}`)));
+	].map(f => copyFile(`src/browser/${f}`, `${dest}/${f}`)));
 	const defaultPrefix = 'matanuionlinegameii.';
-	await fse.outputFile(`${dest}/index.html`, templateStrings(
-		await fse.readFile('src/browser/index.html', 'utf8'),
+	await outputFile(`${dest}/index.html`, templateStrings(
+		await readFile('src/browser/index.html', 'utf8'),
 		{
 			LS_PREFIX: process.env.MNOGII_LS_PREFIX || defaultPrefix,
 			API_PREFIX: process.env.MNOGII_API_PREFIX || defaultPrefix,
@@ -92,23 +94,21 @@ async function browser(dest) {
 }
 
 gulp.task('clean', async () => {
-	await fse.remove('.cache');
-	await fse.remove('build');
-	await fse.remove('dist');
+	await remove('.cache', 'build', 'dist');
 });
 
 gulp.task('build:pages', async () => {
 	const dest = 'build/pages';
-	await fse.remove(dest);
+	await remove(dest);
 	await browser(dest);
 	await docs('docs', dest);
 });
 
 gulp.task('build:browser', async () => {
 	const dest = 'build/browser';
-	await fse.remove(dest);
+	await remove(dest);
 	await browser(`${dest}/data`);
-	await fse.outputFile(
+	await outputFile(
 		`${dest}/${appFile}.html`,
 		'<meta http-equiv="refresh" content="0;url=data/index.html">\n'
 	);
@@ -117,7 +117,7 @@ gulp.task('build:browser', async () => {
 
 gulp.task('build:windows', async () => {
 	const dest = 'build/windows';
-	await fse.remove(dest);
+	await remove(dest);
 	const file = `${appFile}.exe`;
 	const b = new BundleWindows32(`${dest}/${file}`);
 	b.projector.versionStrings = {
@@ -143,7 +143,7 @@ gulp.task('build:mac', async () => {
 	// Release projectors on Mac have slow performance when resized larger.
 	// Debug projectors do not have this performance issue.
 	const dest = 'build/mac';
-	await fse.remove(dest);
+	await remove(dest);
 	const pkgInfo = 'APPL????';
 	const b = new BundleMacApp(`${dest}/${appFile}.app`);
 	b.projector.binaryName = appFile;
@@ -183,7 +183,7 @@ gulp.task('build:mac', async () => {
 
 gulp.task('build:linux-i386', async () => {
 	const dest = 'build/linux-i386';
-	await fse.remove(dest);
+	await remove(dest);
 	const b = new BundleLinux32(`${dest}/${appFile}`);
 	b.projector.patchProjectorPath = true;
 	b.projector.patchWindowTitle = appName;
@@ -193,7 +193,7 @@ gulp.task('build:linux-i386', async () => {
 
 gulp.task('build:linux-x86_64', async () => {
 	const dest = 'build/linux-x86_64';
-	await fse.remove(dest);
+	await remove(dest);
 	const b = new BundleLinux64(`${dest}/${appFile}`);
 	b.projector.patchProjectorPath = true;
 	b.projector.patchProjectorOffset = true;
@@ -218,14 +218,14 @@ gulp.task('dist:windows:exe', async () => {
 	const outDir = 'dist';
 	const outFile = `${distName}-Windows`;
 	const target = `${outDir}/${outFile}.exe`;
-	await fse.remove(target);
+	await remove(target);
 	const res = `${target}.res`;
 	const resIcon = `${res}/icon.ico`;
 	const resHeaders = `${res}/headers`;
 	const resSidebars = `${res}/sidebars`;
-	await fse.remove(res);
+	await remove(res);
 	await Promise.all([
-		readIco('res/inno-icon').then(d => fse.outputFile(resIcon, d)),
+		readIco('res/inno-icon').then(d => outputFile(resIcon, d)),
 		pngs2bmps('res/inno-header', resHeaders),
 		pngs2bmps('res/inno-sidebar', resSidebars),
 	]);
@@ -250,7 +250,7 @@ gulp.task('dist:windows:exe', async () => {
 		VarReadMeName: `${appFile} - README`,
 		VarReadMeFile: 'README.html'
 	});
-	await fse.remove(res);
+	await remove(res);
 });
 
 gulp.task('dist:mac:tgz', async () => {
@@ -265,7 +265,7 @@ gulp.task('dist:mac:dmg', async () => {
 	};
 	const output = `dist/${distName}-Mac.dmg`;
 	const icon = `${output}.icns`;
-	await fse.outputFile(icon, await readIcns('res/dmg-icon.iconset'));
+	await outputFile(icon, await readIcns('res/dmg-icon.iconset'));
 	await makeDmg(output, {
 		format: 'UDBZ',
 		title: appDmgTitle,
@@ -296,7 +296,7 @@ gulp.task('dist:mac:dmg', async () => {
 			}
 		]
 	});
-	await fse.remove(icon);
+	await remove(icon);
 });
 
 gulp.task('dist:linux-i386:tgz', async () => {
