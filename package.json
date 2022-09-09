@@ -16,7 +16,6 @@
 		"@shockpkg/swf-projector": "^3.0.1",
 		"archiver": "^5.3.1",
 		"innosetup": "^6.0.5",
-		"jimp": "^0.16.1",
 		"marked": "^4.1.0",
 		"tar": "^6.1.11",
 		"yauzl": "^2.10.0"
