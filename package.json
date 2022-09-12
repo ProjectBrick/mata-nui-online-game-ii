@@ -2,7 +2,7 @@
 	"private": true,
 	"appName": "Mata Nui Online Game II",
 	"appDomain": "io.github.projectbrick.MataNuiOnlineGameII",
-	"version": "1.0.2",
+	"version": "1.1.0",
 	"author": "Project Brick",
 	"copyright": "Copyright 2003 The LEGO Group and Templar Studios LLC. Unofficial release by Project Brick.",
 	"optionalDependencies": {
