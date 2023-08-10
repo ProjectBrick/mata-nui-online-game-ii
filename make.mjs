@@ -37,7 +37,7 @@ async function * resources() {
 	const pc = await Propercase.init('propercase.txt', '.cache/propercase');
 	for await (const [file, read] of readSources([
 		new SourceDir('mod'),
-		new SourceDir('recreation'),
+		new SourceZip('original/recovered/MissingBionicleFiles.zip', ''),
 		new SourceZip('original/lego/hahli.zip', 'hahli/')
 	])) {
 		if (/^[^.][^\\/]+\.(swf)$/i.test(file)) {

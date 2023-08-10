@@ -17,14 +17,9 @@ To activate the in-game debug keys type `kapura` (must be the first thing typed 
 | <kbd>*</kbd> | Unmute sound                   |
 
 
-## Restored Content
-
--   Recreated NokamaConversation (based on MatauConversation).
--   Recreated NixiesLibrary (based on screenshots and NiretasHut).
-
-
 ## Bug Fixes
 
+-   Recovered lost NokamaConversation and NixiesLibrary files.
 -   Flash Player 10+ version detection.
 -   Crash after CutsceneHahliWakes plays in many versions of Flash Player.
 -   Loading glitches.
